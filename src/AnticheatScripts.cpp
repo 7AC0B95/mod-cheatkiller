@@ -57,6 +57,18 @@ public:
     {
         if (sConfigMgr->GetOption<bool>("Anticheat.OpAckOrderHack", true) && sConfigMgr->GetOption<bool>("Anticheat.Enabled", true))
             sAnticheatMgr->AckUpdate(player, diff);
+
+        AnticheatData& data = sAnticheatMgr->GetPlayerData(player);
+
+        if (!player->IsAlive() && !data.IsDead())
+        {
+            data.SetIsDead(true);
+            data.SetDeathPosition(player->GetPosition());
+        }
+        else if (player->IsAlive() && data.IsDead())
+        {
+            data.SetIsDead(false);
+        }
     }
 };
 
@@ -106,6 +118,12 @@ public:
 
     void OnPlayerMove(Player* player, MovementInfo mi, uint32 opcode) override
     {
+        if (opcode == MSG_DELAY_GHOST_TELEPORT)
+        {
+            AnticheatData& data = sAnticheatMgr->GetPlayerData(player);
+            data.SetJustReleased(true);
+        }
+
         if (!player->GetSession()->IsGMAccount() || sConfigMgr->GetOption<bool>("Anticheat.EnabledOnGmAccounts", false))
             sAnticheatMgr->StartHackDetection(player, mi, opcode);
     }

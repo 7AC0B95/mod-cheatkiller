@@ -74,6 +74,15 @@ public:
 
     [[nodiscard]] bool GetJustUsedMovementSpell() const { return justUsedMovementSpell; }
     void SetJustUsedMovementSpell(bool value) { justUsedMovementSpell = value; }
+
+    [[nodiscard]] bool IsDead() const { return isDead; }
+    void SetIsDead(bool value) { isDead = value; }
+
+    [[nodiscard]] Position GetDeathPosition() const { return deathPosition; }
+    void SetDeathPosition(const Position& value) { deathPosition = value; }
+
+    [[nodiscard]] bool HasJustReleased() const { return justReleased; }
+    void SetJustReleased(bool value) { justReleased = value; }
 private:
     uint32 lastOpcode;
     MovementInfo lastMovementInfo;
@@ -87,6 +96,9 @@ private:
     uint32 tempReportsTimer[MAX_REPORT_TYPES];
     bool hasDailyReport;
     bool justUsedMovementSpell;
+    bool isDead;
+    Position deathPosition;
+    bool justReleased;
 };
 
 #endif

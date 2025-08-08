@@ -31,6 +31,8 @@
 #include "Configuration/Config.h"
 #include "SpellAuras.h"
 #include "DatabaseEnv.h"
+#include "ObjectMgr.h"
+#include "WorldSafeLocs.h"
 #include "WorldSessionMgr.h"
 
 std::string modulestring = "anticheat";
@@ -139,6 +141,7 @@ void AnticheatMgr::StartHackDetection(Player* player, MovementInfo movementInfo,
     }
     AntiKnockBackHackDetection(player, movementInfo);
     NoFallDamageDetection(player, movementInfo);
+    DeathReleaseHackDetection(player, movementInfo);
     if (Battleground* bg = player->GetBattleground())
     {
         if (bg->GetStatus() == STATUS_WAIT_JOIN)
@@ -190,6 +193,8 @@ const char* AnticheatMgr::GetReportNameFromReportType(ReportTypes reportType)
             return "Op Ack";
         case COUNTER_MEASURES_REPORT:
             return "Unknown counter measure";   // Synful-Syn: That is silly. It should not be part of the ReportTypes enum because a counter measure is not a hack.
+        case DEATH_RELEASE_HACK_REPORT:
+            return "Death Release";
         default:
             return "Unknown";
     }
@@ -229,6 +234,8 @@ uint32 AnticheatMgr::GetAlertFrequencyConfigFromReportType(ReportTypes reportTyp
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.AlertFrequency.OpAck", 1));
         case COUNTER_MEASURES_REPORT:
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.AlertFrequency.CounterMeasure", 5));
+        case DEATH_RELEASE_HACK_REPORT:
+            return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.AlertFrequency.DeathRelease", 1));
         default:
             return 1;
     }
@@ -268,6 +275,8 @@ uint32 AnticheatMgr::GetMinimumReportInChatThresholdConfigFromReportType(ReportT
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Min.OpAck", 1));
         case COUNTER_MEASURES_REPORT:
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Min.CounterMeasure", 50));
+        case DEATH_RELEASE_HACK_REPORT:
+            return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Min.DeathRelease", 1));
         default:
             return 1;
     }
@@ -307,6 +316,8 @@ uint32 AnticheatMgr::GetMaximumReportInChatThresholdConfigFromReportType(ReportT
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Max.OpAck", 60));
         case COUNTER_MEASURES_REPORT:
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Max.CounterMeasure", 60));
+        case DEATH_RELEASE_HACK_REPORT:
+            return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Max.DeathRelease", 80));
         default:
             return 80;
     }
@@ -1630,6 +1641,11 @@ uint32 AnticheatMgr::GetTotalReports(ObjectGuid guid)
     return m_Players[guid].GetTotalReports();
 }
 
+AnticheatData& AnticheatMgr::GetPlayerData(Player* player)
+{
+    return m_Players[player->GetGUID()];
+}
+
 float AnticheatMgr::GetAverage(ObjectGuid guid)
 {
     return m_Players[guid].GetAverage();
@@ -1887,4 +1903,41 @@ void AnticheatMgr::ResetDailyReportStates()
 {
     for (AnticheatPlayersDataMap::iterator it = m_Players.begin(); it != m_Players.end(); ++it)
         m_Players[(*it).first].SetDailyReportState(false);
+}
+
+void AnticheatMgr::DeathReleaseHackDetection(Player* player, MovementInfo movementInfo)
+{
+    if (!sConfigMgr->GetOption<bool>("Anticheat.DetectDeathReleaseHack", true))
+        return;
+
+    AnticheatData& data = GetPlayerData(player);
+
+    if (data.HasJustReleased())
+    {
+        data.SetJustReleased(false);
+
+        if (data.IsDead())
+        {
+            // This is where the magic happens. We need to get the graveyard position.
+            // We assume that the Player object has a method to get the closest graveyard.
+            // If this method doesn't exist, this code will not compile.
+            WorldSafeLocsEntry const* graveyard = sObjectMgr->GetClosestGraveYard(
+                data.GetDeathPosition().GetPositionX(),
+                data.GetDeathPosition().GetPositionY(),
+                data.GetDeathPosition().GetPositionZ(),
+                data.GetDeathPosition().GetMapId(),
+                player->GetTeamId());
+
+            if (graveyard)
+            {
+                float distance = movementInfo.pos.GetExactDist2d(graveyard->x, graveyard->y);
+                float max_distance = sConfigMgr->GetOption<float>("Anticheat.DeathReleaseHackDistance", 50.0f);
+
+                if (distance > max_distance)
+                {
+                    BuildReport(player, DEATH_RELEASE_HACK_REPORT, movementInfo);
+                }
+            }
+        }
+    }
 }

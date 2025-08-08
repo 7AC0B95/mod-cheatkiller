@@ -52,7 +52,8 @@ enum ReportTypes : uint8
     ANTIKNOCK_BACK_HACK_REPORT = 11,
     NO_FALL_DAMAGE_HACK_REPORT = 12,
     OP_ACK_HACK_REPORT = 13,
-    COUNTER_MEASURES_REPORT = 14
+    COUNTER_MEASURES_REPORT = 14,
+    DEATH_RELEASE_HACK_REPORT = 15
    // MAX_REPORT_TYPES
 };
 
@@ -103,6 +104,7 @@ class AnticheatMgr
         void CheckForOrderAck(uint32 opcode);
         std::vector<ServerOrderData> _opackorders; // Packets sent by server, triggering *_ACK from client
 
+        AnticheatData& GetPlayerData(Player* player);
         uint32 GetTotalReports(ObjectGuid guid);
         float GetAverage(ObjectGuid guid);
         uint32 GetTypeReports(ObjectGuid guid, ReportTypes type);
@@ -128,6 +130,7 @@ class AnticheatMgr
         void AntiSwimHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
         void AntiKnockBackHackDetection(Player* player, MovementInfo movementInfo);
         void NoFallDamageDetection(Player* player, MovementInfo movementInfo);
+        void DeathReleaseHackDetection(Player* player, MovementInfo movementInfo);
         void BGreport(Player* player, MovementInfo movementInfo);
         void CheckStartPositions(Player* player, MovementInfo movementInfo);
         void BGStartExploit(Player* player, MovementInfo movementInfo);

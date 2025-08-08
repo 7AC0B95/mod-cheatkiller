@@ -39,6 +39,8 @@ AnticheatData::AnticheatData()
     creationTime = 0;
     hasDailyReport = false;
     justUsedMovementSpell = false;
+    isDead = false;
+    justReleased = false;
 }
 
 AnticheatData::~AnticheatData()
