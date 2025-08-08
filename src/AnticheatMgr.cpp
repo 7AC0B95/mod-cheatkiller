@@ -125,7 +125,7 @@ void AnticheatMgr::NoclipHackDetection(Player* player, MovementInfo movementInfo
     float endZ = movementInfo.pos.GetPositionZ();
 
     // Iterate all GameObjects in the map
-    for (auto const& goPair : map->GetGameObjects())
+    for (auto const& goPair : map->GetGameObjectBySpawnIdStore())
     {
         GameObject* go = goPair.second;
         if (!go || !go->IsActive() || !go->IsSolid())
