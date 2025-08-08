@@ -33,7 +33,7 @@
 #include "DatabaseEnv.h"
 #include "WorldSessionMgr.h"
 
-std::string modulestring = "cheatkiller";
+std::string modulestring = "anticheat";
 constexpr auto LANG_ANTICHEAT_ALERT = 1;
 constexpr auto LANG_ANTICHEAT_TELEPORT = 2;
 constexpr auto LANG_ANTICHEAT_IGNORECONTROL = 3;
@@ -1704,14 +1704,15 @@ void AnticheatMgr::BuildReport(Player* player, ReportTypes reportType, Optional<
         {
             m_Players[key].SetTempReports(m_Players[key].GetTempReports(reportType) + 1, reportType);
 
-            if (m_Players[key].GetTempReports(reportType) < 3)
+            // The original value of 3 required 3 detections in 3 seconds. For testing, we can lower this to 1.
+            if (m_Players[key].GetTempReports(reportType) < 1)
                 return;
         }
         else
         {
             m_Players[key].SetTempReportsTimer(actualTime, reportType);
             m_Players[key].SetTempReports(1, reportType);
-            return;
+            // By removing the return here, the first report after a pause will be processed instead of ignored.
         }
     }
 
