@@ -131,6 +131,9 @@ class AnticheatMgr
         void BGreport(Player* player, MovementInfo movementInfo);
         void CheckStartPositions(Player* player, MovementInfo movementInfo);
         void BGStartExploit(Player* player, MovementInfo movementInfo);
+    void NoclipHackDetection(Player* player, MovementInfo movementInfo);
+    bool LineAABBIntersect(float sx, float sy, float sz, float ex, float ey, float ez,
+                  float minX, float minY, float minZ, float maxX, float maxY, float maxZ);
         void BuildReport(Player* player, ReportTypes reportType, Optional<MovementInfo> optMovementInfo);
         bool MustCheckTempReports(ReportTypes type);
         void SendMiddleScreenGMMessage(std::string str);

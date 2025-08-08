@@ -38,6 +38,7 @@ constexpr auto LANG_ANTICHEAT_ALERT = 1;
 constexpr auto LANG_ANTICHEAT_TELEPORT = 2;
 constexpr auto LANG_ANTICHEAT_IGNORECONTROL = 3;
 constexpr auto LANG_ANTICHEAT_DUEL = 4;
+constexpr auto LANG_ANTICHEAT_NOCLIP = 5;
 constexpr auto LANG_ANTICHEAT_BG_EXPLOIT = 5;
 constexpr auto LANG_ANTICHEAT_COUNTERMEASURE = 6;
 
@@ -139,9 +140,99 @@ void AnticheatMgr::StartHackDetection(Player* player, MovementInfo movementInfo,
     }
     AntiKnockBackHackDetection(player, movementInfo);
     NoFallDamageDetection(player, movementInfo);
+    NoclipHackDetection(player, movementInfo);
     if (Battleground* bg = player->GetBattleground())
     {
         if (bg->GetStatus() == STATUS_WAIT_JOIN)
+// Detects noclip hacks by checking if player movement intersects with solid WMO/M2 objects
+void AnticheatMgr::NoclipHackDetection(Player* player, MovementInfo movementInfo)
+{
+    if (!sConfigMgr->GetOption<bool>("Anticheat.DetectNoclipHack", true))
+        return;
+
+    // Real implementation: check for collision with solid GameObjects
+    bool noclipDetected = false;
+    Map* map = player->GetMap();
+    if (!map)
+        return;
+
+    // Get last movement position
+    ObjectGuid key = player->GetGUID();
+    const MovementInfo& lastMove = m_Players[key].GetLastMovementInfo();
+    float startX = lastMove.pos.GetPositionX();
+    float startY = lastMove.pos.GetPositionY();
+    float startZ = lastMove.pos.GetPositionZ();
+    float endX = movementInfo.pos.GetPositionX();
+    float endY = movementInfo.pos.GetPositionY();
+    float endZ = movementInfo.pos.GetPositionZ();
+
+    // Iterate all GameObjects in the map
+    for (auto const& goPair : map->GetGameObjects())
+    {
+        GameObject* go = goPair.second;
+        if (!go || !go->IsActive() || !go->IsSolid())
+            continue;
+
+        // Get bounding box (assume min/max XYZ)
+        float minX = go->GetPositionX() - go->GetBoundingRadius();
+        float maxX = go->GetPositionX() + go->GetBoundingRadius();
+        float minY = go->GetPositionY() - go->GetBoundingRadius();
+        float maxY = go->GetPositionY() + go->GetBoundingRadius();
+        float minZ = go->GetPositionZ() - go->GetBoundingRadius();
+        float maxZ = go->GetPositionZ() + go->GetBoundingRadius();
+
+        // Simple line-AABB intersection (player path vs object)
+        if (LineAABBIntersect(startX, startY, startZ, endX, endY, endZ, minX, minY, minZ, maxX, maxY, maxZ))
+        {
+            noclipDetected = true;
+            break;
+        }
+    }
+
+    if (noclipDetected)
+    {
+        uint32 latency = player->GetSession()->GetLatency();
+        std::string goXYZ = ".go xyz " + std::to_string(player->GetPositionX()) + " " + std::to_string(player->GetPositionY()) + " " + std::to_string(player->GetPositionZ() + 1.0f) + " " + std::to_string(player->GetMap()->GetId()) + " " + std::to_string(player->GetOrientation());
+        LOG_INFO("anticheat.module", "AnticheatMgr:: Noclip Hack detected player {} ({}) - Latency: {} ms - IP: {} - Cheat Flagged At: {}", player->GetName(), player->GetGUID().ToString(), latency, player->GetSession()->GetRemoteAddress().c_str(), goXYZ);
+
+        if (sConfigMgr->GetOption<bool>("Anticheat.CM.NOCLIP", true))
+        {
+            player->GetMotionMaster()->MoveFall();
+            if (sConfigMgr->GetOption<bool>("Anticheat.CM.WriteLog", true))
+            {
+                LOG_INFO("anticheat.module", "ANTICHEAT COUNTER MEASURE:: {} NOCLIP Hack Countered and has been set to fall - Flagged at: {}", player->GetName(), goXYZ);
+            }
+            if (sConfigMgr->GetOption<bool>("Anticheat.CM.ALERTSCREEN", true))
+            {
+                SendMiddleScreenGMMessage("|cFF00FFFF[|cFF60FF00" + player->GetName() + "|cFF00FFFF] NOCLIP HACK COUNTER MEASURE ALERT");
+            }
+            if (sConfigMgr->GetOption<bool>("Anticheat.CM.ALERTCHAT", true))
+            {
+                const char* str = "|cFFFFFC00 NOCLIP HACK COUNTER MEASURE ALERT";
+                DoToAllGMs([&](Player* p)
+                {
+                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_NOCLIP, str, player->GetName(), player->GetName());
+                });
+            }
+            BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
+        }
+        BuildReport(player, ZAXIS_HACK_REPORT, movementInfo); // Or create a new report type for noclip
+    }
+
+}
+
+// Helper: Line vs AABB intersection
+bool AnticheatMgr::LineAABBIntersect(float sx, float sy, float sz, float ex, float ey, float ez,
+                                     float minX, float minY, float minZ, float maxX, float maxY, float maxZ)
+{
+    // Simple check: if either endpoint is inside the box
+    if ((sx >= minX && sx <= maxX && sy >= minY && sy <= maxY && sz >= minZ && sz <= maxZ) ||
+        (ex >= minX && ex <= maxX && ey >= minY && ey <= maxY && ez >= minZ && ez <= maxZ))
+        return true;
+    // TODO: Implement full line-AABB intersection for more accuracy
+    return false;
+}
+}
         {
             BGStartExploit(player, movementInfo);
         }
