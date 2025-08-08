@@ -33,7 +33,7 @@
 #include "DatabaseEnv.h"
 #include "WorldSessionMgr.h"
 
-std::string modulestring = "anticheat";
+std::string modulestring = "cheatkiller";
 constexpr auto LANG_ANTICHEAT_ALERT = 1;
 constexpr auto LANG_ANTICHEAT_TELEPORT = 2;
 constexpr auto LANG_ANTICHEAT_IGNORECONTROL = 3;

@@ -25,7 +25,7 @@
 void startAnticheatScripts();
 void AddSC_anticheat_commandscript();
 
-void Addmod_anticheatScripts()
+void Addmod_cheatkillerScripts()
 {
     startAnticheatScripts();
     AddSC_anticheat_commandscript();
