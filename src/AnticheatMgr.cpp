@@ -341,7 +341,7 @@ void AnticheatMgr::BuildAndSendReportToIngameGameMasters(Player* player, ReportT
             {
                 DoToAllGMs([&](Player* p)
                     {
-                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_IGNORECONTROL, playerName, latency);
+                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_IGNORECONTROL, playerName, playerName, latency);
                     });
             }
             else
@@ -492,7 +492,7 @@ void AnticheatMgr::SpeedHackDetection(Player* player, MovementInfo movementInfo)
             const char* str = "|cFFFFFC00 TIME MANIPULATION COUNTER MEASURE ALERT";
             DoToAllGMs([&](Player* p)
                 {
-                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                 });
         }
         timeDiff = 1;
@@ -515,7 +515,7 @@ void AnticheatMgr::SpeedHackDetection(Player* player, MovementInfo movementInfo)
             const char* str = "|cFFFFFC00 TIME MANIPULATION COUNTER MEASURE ALERT";
             DoToAllGMs([&](Player* p)
                 {
-                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                 });
         }
         timeDiff = 1;
@@ -583,7 +583,7 @@ void AnticheatMgr::SpeedHackDetection(Player* player, MovementInfo movementInfo)
                         const char* str = "|cFFFFFC00 SPEED HACK COUNTER MEASURE ALERT";
                         DoToAllGMs([&](Player* p)
                             {
-                                ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                                ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                             });
                     }
                     BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
@@ -646,7 +646,7 @@ void AnticheatMgr::FlyHackDetection(Player* player, MovementInfo  movementInfo)
             const char* str = "|cFFFFFC00 FLY HACK COUNTER MEASURE ALERT";
             DoToAllGMs([&](Player* p)
                 {
-                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                 });
         }
         BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
@@ -698,7 +698,7 @@ void AnticheatMgr::JumpHackDetection(Player* player, MovementInfo movementInfo, 
                 const char* str = "|cFFFFFC00 JUMP HACK COUNTER MEASURE ALERT";
                 DoToAllGMs([&](Player* p)
                     {
-                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                     });
             }
             BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
@@ -762,7 +762,7 @@ void AnticheatMgr::JumpHackDetection(Player* player, MovementInfo movementInfo, 
                     const char* str = "|cFFFFFC00 ADVANCE JUMP HACK COUNTER MEASURE ALERT";
                     DoToAllGMs([&](Player* p)
                         {
-                            ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                            ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                         });
                 }
                 BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
@@ -957,7 +957,7 @@ void AnticheatMgr::TeleportHackDetection(Player* player, MovementInfo movementIn
             uint32 latency2 = opponent->GetSession()->GetLatency();
             DoToAllGMs([&](Player* p)
                 {
-                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_DUEL, player->GetName(), latency, opponent->GetName(), latency2);
+                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_DUEL, player->GetName().c_str(), player->GetName().c_str(), latency, opponent->GetName().c_str(), opponent->GetName().c_str(), latency2);
                 });
 
             if (sConfigMgr->GetOption<bool>("Anticheat.WriteLog", true))
@@ -996,7 +996,7 @@ void AnticheatMgr::TeleportHackDetection(Player* player, MovementInfo movementIn
                 const char* str = "|cFFFFFC00 TELEPORT COUNTER MEASURE ALERT";
                 DoToAllGMs([&](Player* p)
                     {
-                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                     });
             }
             player->TeleportTo(player->GetMapId(), lastX, lastY, lastZ, player->GetOrientation());
@@ -1203,7 +1203,7 @@ void AnticheatMgr::ZAxisHackDetection(Player* player, MovementInfo movementInfo)
                 const char* str = "|cFFFFFC00 IGNORE-Z HACK COUNTER MEASURE ALERT";
                 DoToAllGMs([&](Player* p)
                     {
-                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                     });
             }
             BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
@@ -1338,7 +1338,7 @@ void AnticheatMgr::BGreport(Player* player, MovementInfo movementInfo)
             uint32 latency = player->GetSession()->GetLatency();
             DoToAllGMs([&](Player* p)
                 {
-                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_BG_EXPLOIT, player->GetName(), player->GetName(), latency);
+                    ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_BG_EXPLOIT, player->GetName().c_str(), player->GetName().c_str(), latency);
                 });
         }
     }
@@ -1381,7 +1381,7 @@ void AnticheatMgr::CheckStartPositions(Player* player, MovementInfo movementInfo
                 const char* str = "|cFFFFFC00 BG START SPOT COUNTER MEASURE ALERT";
                 DoToAllGMs([&](Player* p)
                     {
-                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName(), player->GetName());
+                        ChatHandler(p->GetSession()).PSendModuleSysMessage(modulestring, LANG_ANTICHEAT_COUNTERMEASURE, str, player->GetName().c_str(), player->GetName().c_str());
                     });
             }
             BuildReport(player, COUNTER_MEASURES_REPORT, movementInfo);
@@ -1584,6 +1584,41 @@ void AnticheatMgr::DoActions(Player* player)
             }
             BuildReport(player, OP_ACK_HACK_REPORT, std::nullopt);
         }
+    }
+}
+
+void AnticheatMgr::TeleportAckDetection(Player* player, uint32 diff)
+{
+    ObjectGuid key = player->GetGUID();
+
+    if (player->IsBeingTeleported())
+    {
+        uint32& timer = m_Players[key].GetTeleportAckTimer();
+        if (timer == 0)
+        {
+            timer = sConfigMgr->GetOption<uint32>("Anticheat.TeleportAckTimeout", 10000);
+        }
+        else
+        {
+            if (timer <= diff)
+            {
+                if (sConfigMgr->GetOption<bool>("Anticheat.WriteLog", true))
+                {
+                    LOG_INFO("anticheat.module", "AnticheatMgr:: Teleport Ack Timeout detected for player {} ({})", player->GetName(), player->GetGUID().ToString());
+                }
+                BuildReport(player, OP_ACK_HACK_REPORT, std::nullopt);
+                player->SetCanTeleport(false); // a.k.a. ResetTeleportingState()
+                timer = 0;
+            }
+            else
+            {
+                timer -= diff;
+            }
+        }
+    }
+    else
+    {
+        m_Players[key].GetTeleportAckTimer() = 0;
     }
 }
 

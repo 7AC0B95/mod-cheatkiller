@@ -74,6 +74,8 @@ public:
 
     [[nodiscard]] bool GetJustUsedMovementSpell() const { return justUsedMovementSpell; }
     void SetJustUsedMovementSpell(bool value) { justUsedMovementSpell = value; }
+
+    [[nodiscard]] uint32& GetTeleportAckTimer() { return m_teleportAckTimer; }
 private:
     uint32 lastOpcode;
     MovementInfo lastMovementInfo;
@@ -87,6 +89,7 @@ private:
     uint32 tempReportsTimer[MAX_REPORT_TYPES];
     bool hasDailyReport;
     bool justUsedMovementSpell;
+    uint32 m_teleportAckTimer;
 };
 
 #endif
