@@ -102,48 +102,6 @@ void AnticheatMgr::DoToAllGMs(std::function<void(Player*)> exec)
                 exec(player);
 }
 
-void AnticheatMgr::StartHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
-{
-    if (!sConfigMgr->GetOption<bool>("Anticheat.Enabled", true))
-        return;
-
-    if (player->IsGameMaster())
-        return;
-
-    ObjectGuid key = player->GetGUID();
-
-    if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
-    {
-        m_Players[key].SetLastInformations(movementInfo, opcode, player->GetMapId(), GetPlayerCurrentSpeedRate(player));
-        return;
-    }
-
-    TeleportHackDetection(player, movementInfo);
-    SpeedHackDetection(player, movementInfo);
-    FlyHackDetection(player, movementInfo);
-    JumpHackDetection(player, movementInfo, opcode);
-    TeleportPlaneHackDetection(player, movementInfo, opcode);
-    ClimbHackDetection(player, movementInfo, opcode);
-    IgnoreControlHackDetection(player, movementInfo, opcode);
-    GravityHackDetection(player, movementInfo);
-    if (player->GetLiquidData().Status == LIQUID_MAP_WATER_WALK)
-    {
-        WalkOnWaterHackDetection(player, movementInfo);
-    }
-    else
-    {
-        ZAxisHackDetection(player, movementInfo);
-    }
-    if (player->GetLiquidData().Status == LIQUID_MAP_UNDER_WATER)
-    {
-        AntiSwimHackDetection(player, movementInfo, opcode);
-    }
-    AntiKnockBackHackDetection(player, movementInfo);
-    NoFallDamageDetection(player, movementInfo);
-    NoclipHackDetection(player, movementInfo);
-    if (Battleground* bg = player->GetBattleground())
-    {
-        if (bg->GetStatus() == STATUS_WAIT_JOIN)
 // Detects noclip hacks by checking if player movement intersects with solid WMO/M2 objects
 void AnticheatMgr::NoclipHackDetection(Player* player, MovementInfo movementInfo)
 {
@@ -232,7 +190,49 @@ bool AnticheatMgr::LineAABBIntersect(float sx, float sy, float sz, float ex, flo
     // TODO: Implement full line-AABB intersection for more accuracy
     return false;
 }
-}
+
+void AnticheatMgr::StartHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode)
+{
+    if (!sConfigMgr->GetOption<bool>("Anticheat.Enabled", true))
+        return;
+
+    if (player->IsGameMaster())
+        return;
+
+    ObjectGuid key = player->GetGUID();
+
+    if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
+    {
+        m_Players[key].SetLastInformations(movementInfo, opcode, player->GetMapId(), GetPlayerCurrentSpeedRate(player));
+        return;
+    }
+
+    TeleportHackDetection(player, movementInfo);
+    SpeedHackDetection(player, movementInfo);
+    FlyHackDetection(player, movementInfo);
+    JumpHackDetection(player, movementInfo, opcode);
+    TeleportPlaneHackDetection(player, movementInfo, opcode);
+    ClimbHackDetection(player, movementInfo, opcode);
+    IgnoreControlHackDetection(player, movementInfo, opcode);
+    GravityHackDetection(player, movementInfo);
+    if (player->GetLiquidData().Status == LIQUID_MAP_WATER_WALK)
+    {
+        WalkOnWaterHackDetection(player, movementInfo);
+    }
+    else
+    {
+        ZAxisHackDetection(player, movementInfo);
+    }
+    if (player->GetLiquidData().Status == LIQUID_MAP_UNDER_WATER)
+    {
+        AntiSwimHackDetection(player, movementInfo, opcode);
+    }
+    AntiKnockBackHackDetection(player, movementInfo);
+    NoFallDamageDetection(player, movementInfo);
+    NoclipHackDetection(player, movementInfo);
+    if (Battleground* bg = player->GetBattleground())
+    {
+        if (bg->GetStatus() == STATUS_WAIT_JOIN)
         {
             BGStartExploit(player, movementInfo);
         }
