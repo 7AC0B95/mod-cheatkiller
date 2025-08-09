@@ -111,6 +111,12 @@ void AnticheatMgr::StartHackDetection(Player* player, MovementInfo movementInfo,
 
     ObjectGuid key = player->GetGUID();
 
+    if (m_Players[key].GetJustRepopped())
+    {
+        GraveyardHackDetection(player);
+        m_Players[key].SetJustRepopped(false);
+    }
+
     if (player->IsInFlight() || player->GetTransport() || player->GetVehicle())
     {
         m_Players[key].SetLastInformations(movementInfo, opcode, player->GetMapId(), GetPlayerCurrentSpeedRate(player));
@@ -190,6 +196,8 @@ const char* AnticheatMgr::GetReportNameFromReportType(ReportTypes reportType)
             return "Op Ack";
         case COUNTER_MEASURES_REPORT:
             return "Unknown counter measure";   // Synful-Syn: That is silly. It should not be part of the ReportTypes enum because a counter measure is not a hack.
+        case GRAVEYARD_HACK_REPORT:
+            return "Graveyard";
         default:
             return "Unknown";
     }
@@ -229,6 +237,8 @@ uint32 AnticheatMgr::GetAlertFrequencyConfigFromReportType(ReportTypes reportTyp
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.AlertFrequency.OpAck", 1));
         case COUNTER_MEASURES_REPORT:
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.AlertFrequency.CounterMeasure", 5));
+        case GRAVEYARD_HACK_REPORT:
+            return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.AlertFrequency.Graveyard", 1));
         default:
             return 1;
     }
@@ -268,6 +278,8 @@ uint32 AnticheatMgr::GetMinimumReportInChatThresholdConfigFromReportType(ReportT
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Min.OpAck", 1));
         case COUNTER_MEASURES_REPORT:
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Min.CounterMeasure", 50));
+        case GRAVEYARD_HACK_REPORT:
+            return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Min.Graveyard", 1));
         default:
             return 1;
     }
@@ -307,6 +319,8 @@ uint32 AnticheatMgr::GetMaximumReportInChatThresholdConfigFromReportType(ReportT
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Max.OpAck", 60));
         case COUNTER_MEASURES_REPORT:
             return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Max.CounterMeasure", 60));
+        case GRAVEYARD_HACK_REPORT:
+            return std::max(1u, sConfigMgr->GetOption<uint32>("Anticheat.ReportInChatThreshold.Max.Graveyard", 60));
         default:
             return 80;
     }
@@ -1353,6 +1367,53 @@ void AnticheatMgr::BGreport(Player* player, MovementInfo movementInfo)
     BuildReport(player, TELEPORT_HACK_REPORT, movementInfo);    // Synful-Syn: This needs a different report type.
 }
 
+void AnticheatMgr::GraveyardHackDetection(Player* player)
+{
+    if (!sConfigMgr->GetOption<bool>("Anticheat.DetectGraveyardHack", true))
+        return;
+
+    // This check should only happen for ghosts.
+    if (!player->HasAuraType(SPELL_AURA_GHOST))
+        return;
+
+    GraveyardStorage const& graveyards = sObjectMgr->GetGraveyardStorage();
+    bool isNearGraveyard = false;
+    float minDistance = -1.0f;
+
+    for (WorldSafeLocsEntry const* graveyard : graveyards)
+    {
+        // Check only graveyards for the player's current map.
+        if (graveyard->map_id != player->GetMapId())
+            continue;
+
+        // Check for faction-specific graveyards. 0 is for any faction.
+        if (graveyard->team_id != 0 && graveyard->team_id != player->GetTeamId())
+            continue;
+
+        float dist = player->GetDistance(graveyard->x, graveyard->y, graveyard->z);
+
+        if (minDistance < 0 || dist < minDistance)
+            minDistance = dist;
+
+        // Using a 50 yard radius as a reasonable zone for a graveyard.
+        if (dist < 50.0f)
+        {
+            isNearGraveyard = true;
+            break;
+        }
+    }
+
+    if (!isNearGraveyard)
+    {
+        if (sConfigMgr->GetOption<bool>("Anticheat.WriteLog", true))
+        {
+            LOG_INFO("anticheat.module", "AnticheatMgr:: Graveyard-Hack detected for player {} ({}). Not near any graveyard upon repop. Nearest GY: {:.2f} yd", player->GetName(), player->GetGUID().ToString(), minDistance);
+        }
+
+        BuildReport(player, GRAVEYARD_HACK_REPORT, std::nullopt);
+    }
+}
+
 Position const* AnticheatMgr::GetTeamStartPosition(TeamId teamId) const
 {
     return &_startPosition[teamId];
@@ -1544,6 +1605,12 @@ void AnticheatMgr::HandlePlayerLogin(Player* player)
         m_Players[player->GetGUID()].SetDailyReportState(true);
 }
 
+void AnticheatMgr::HandlePlayerRepop(Player* player)
+{
+    ObjectGuid key = player->GetGUID();
+    m_Players[key].SetJustRepopped(true);
+}
+
 void AnticheatMgr::HandlePlayerLogout(Player* player)
 {
     // TO-DO Make a table that stores the cheaters of the day, with more detailed information.
@@ -1650,15 +1717,15 @@ void AnticheatMgr::CheckForOrderAck(uint32 opcode)
 void AnticheatMgr::SavePlayerData(Player* player)
 {
     AnticheatData playerData = m_Players[player->GetGUID()];
-    //                                                               1       2         3            4           5            6                 7                     8             9               10              11                   12           13              14               15                     16                     17                 18                        19
-    CharacterDatabase.Execute("REPLACE INTO players_reports_status (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,counter_measures_reports, creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), playerData.GetCreationTime());
+    //                                                               1       2         3            4           5            6                 7                     8             9               10              11                   12           13              14               15                     16                     17                 18                        19                   20
+    CharacterDatabase.Execute("REPLACE INTO players_reports_status (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,graveyard_reports,counter_measures_reports, creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(GRAVEYARD_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), playerData.GetCreationTime());
 }
 
 void AnticheatMgr::SavePlayerDataDaily(Player* player)
 {
     AnticheatData playerData = m_Players[player->GetGUID()];
-    //                                                               1       2         3            4           5            6                 7                     8             9               10              11                   12           13              14               15                     16                     17                 18                        19
-    CharacterDatabase.Execute("REPLACE INTO players_reports_status (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,counter_measures_reports, creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), playerData.GetCreationTime());
+    //                                                               1       2         3            4           5            6                 7                     8             9               10              11                   12           13              14               15                     16                     17                 18                        19                   20
+    CharacterDatabase.Execute("REPLACE INTO players_reports_status (guid,average,total_reports,speed_reports,fly_reports,jump_reports,waterwalk_reports,teleportplane_reports,climb_reports,teleport_reports,ignorecontrol_reports,zaxis_reports,antiswim_reports,gravity_reports,antiknockback_reports,no_fall_damage_reports,op_ack_hack_reports,graveyard_reports,counter_measures_reports, creation_time) VALUES ({},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{});", player->GetGUID().GetCounter(), playerData.GetAverage(), playerData.GetTotalReports(), playerData.GetTypeReports(SPEED_HACK_REPORT), playerData.GetTypeReports(FLY_HACK_REPORT), playerData.GetTypeReports(JUMP_HACK_REPORT), playerData.GetTypeReports(WALK_WATER_HACK_REPORT), playerData.GetTypeReports(TELEPORT_PLANE_HACK_REPORT), playerData.GetTypeReports(CLIMB_HACK_REPORT), playerData.GetTypeReports(TELEPORT_HACK_REPORT), playerData.GetTypeReports(IGNORE_CONTROL_REPORT), playerData.GetTypeReports(ZAXIS_HACK_REPORT), playerData.GetTypeReports(ANTISWIM_HACK_REPORT), playerData.GetTypeReports(GRAVITY_HACK_REPORT), playerData.GetTypeReports(ANTIKNOCK_BACK_HACK_REPORT), playerData.GetTypeReports(NO_FALL_DAMAGE_HACK_REPORT), playerData.GetTypeReports(OP_ACK_HACK_REPORT), playerData.GetTypeReports(GRAVEYARD_HACK_REPORT), playerData.GetTypeReports(COUNTER_MEASURES_REPORT), playerData.GetCreationTime());
 }
 uint32 AnticheatMgr::GetTotalReports(ObjectGuid guid)
 {
@@ -1685,6 +1752,7 @@ bool AnticheatMgr::MustCheckTempReports(ReportTypes type)
         && type != ANTIKNOCK_BACK_HACK_REPORT
         && type != NO_FALL_DAMAGE_HACK_REPORT
         && type != OP_ACK_HACK_REPORT
+        && type != GRAVEYARD_HACK_REPORT
         && type != COUNTER_MEASURES_REPORT;
 }
 
@@ -1692,6 +1760,7 @@ void AnticheatMgr::BuildReport(Player* player, ReportTypes reportType, Optional<
 {
     OnReport(player, reportType);
     ObjectGuid key = player->GetGUID();
+
 
     if (MustCheckTempReports(reportType))
     {

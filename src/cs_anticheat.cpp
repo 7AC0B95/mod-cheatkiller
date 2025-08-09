@@ -335,6 +335,9 @@ public:
             if (uint32 op_ack_reports = sAnticheatMgr->GetTypeReports(guid, OP_ACK_HACK_REPORT))
                 handler->PSendSysMessage(lineTemplate_u, sAnticheatMgr->GetReportNameFromReportType(OP_ACK_HACK_REPORT), op_ack_reports);
 
+            if (uint32 graveyard_reports = sAnticheatMgr->GetTypeReports(guid, GRAVEYARD_HACK_REPORT))
+                handler->PSendSysMessage(lineTemplate_u, sAnticheatMgr->GetReportNameFromReportType(GRAVEYARD_HACK_REPORT), graveyard_reports);
+
             return true;
         }
 
