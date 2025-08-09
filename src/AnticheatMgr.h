@@ -96,6 +96,7 @@ class AnticheatMgr
         void SavePlayerDataDaily(Player* player);
         void HandlePlayerLogin(Player* player);
         void HandlePlayerLogout(Player* player);
+        void HandlePlayerRepop(Player* player);
         void AckUpdate(Player* player, uint32 diff);
         void TeleportAckDetection(Player* player, uint32 diff);
         void DoActions(Player* player);

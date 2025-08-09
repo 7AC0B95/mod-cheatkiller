@@ -38,6 +38,7 @@ AnticheatData::AnticheatData()
     average = 0.0f;
     creationTime = 0;
     hasDailyReport = false;
+    justRepopped = false;
     justUsedMovementSpell = false;
     m_teleportAckTimer = 0;
 }

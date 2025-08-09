@@ -38,7 +38,7 @@ Seconds lastIterationPlayer = GameTime::GetUptime() + 30s; //TODO: change 30 sec
 class AnticheatPlayerScript : public PlayerScript
 {
 public:
-    AnticheatPlayerScript() : PlayerScript("AnticheatPlayerScript", { PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_UPDATE }) { }
+    AnticheatPlayerScript() : PlayerScript("AnticheatPlayerScript", { PLAYERHOOK_ON_LOGOUT, PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_UPDATE, PLAYERHOOK_ON_REPOP }) { }
 
     void OnPlayerLogout(Player* player) override
     {
@@ -51,6 +51,11 @@ public:
 
         if (sConfigMgr->GetOption<bool>("Anticheat.LoginMessage", true))
             ChatHandler(player->GetSession()).PSendSysMessage("This server is running an Anticheat Module.");
+    }
+
+    void OnRepop(Player* player) override
+    {
+        sAnticheatMgr->HandlePlayerRepop(player);
     }
 
     void OnPlayerUpdate(Player* player, uint32 diff) override
