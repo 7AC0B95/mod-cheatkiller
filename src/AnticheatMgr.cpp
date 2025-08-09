@@ -32,6 +32,7 @@
 #include "SpellAuras.h"
 #include "DatabaseEnv.h"
 #include "ObjectMgr.h"
+#include "WorldSafeLocs.h"
 #include "WorldSessionMgr.h"
 
 std::string modulestring = "cheatkiller";
