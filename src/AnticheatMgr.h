@@ -131,6 +131,7 @@ class AnticheatMgr
         void AntiSwimHackDetection(Player* player, MovementInfo movementInfo, uint32 opcode);
         void AntiKnockBackHackDetection(Player* player, MovementInfo movementInfo);
         void NoFallDamageDetection(Player* player, MovementInfo movementInfo);
+        void GraveyardHackDetection(Player* player);
         void BGreport(Player* player, MovementInfo movementInfo);
         void CheckStartPositions(Player* player, MovementInfo movementInfo);
         void BGStartExploit(Player* player, MovementInfo movementInfo);
